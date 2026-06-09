@@ -1,0 +1,9 @@
+.env
+!.env.example
+data/
+volumes/
+logs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
