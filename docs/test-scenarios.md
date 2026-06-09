@@ -1,114 +1,62 @@
-# Cenários de Teste Manual
+# Cenários de teste manual
 
-Este roteiro valida a Entrega 1 do RescueRadio usando Docker Compose.
+## Preparação
 
-## Pré-requisitos
-
-- Docker instalado;
-- Docker Compose instalado;
-- portas `4200`, `8000`, `8001` e `8002` disponíveis.
-
-## Subir o projeto
-
-Na raiz do repositório:
+Na raiz de `rescueradio-infra`:
 
 ```powershell
-docker compose up --build
+.\scripts\build-local.ps1
+docker compose -f compose\docker-compose.yml up -d
 ```
 
-Validar URLs:
+Serviços esperados:
 
-| Serviço | URL esperada |
+| Serviço | Endereço |
 | --- | --- |
-| Frontend Angular | <http://localhost:4200> |
+| Frontend | <http://localhost:4200> |
 | API direta | <http://localhost:8000/health> |
 | API via Kong | <http://localhost:8001/health> |
+| UDP | `localhost:9000/udp` |
 
-Resposta esperada do health check:
+## WebSocket
 
-```json
-{
-  "status": "ok",
-  "service": "rescueradio-api"
-}
-```
+1. Abra duas abas do frontend.
+2. Entre como `Lucas` e `Marcelo`.
+3. Envie uma mensagem em uma das abas.
+4. Confirme que ambas recebem a mensagem e exibem os dois membros.
+5. Feche uma aba e confirme o evento de saída na outra.
+6. Abra uma terceira aba e confirme que o briefing contém as mensagens
+   anteriores.
 
-## Teste 1: entrada no canal
+## UDP para WebSocket
 
-1. Abrir <http://localhost:4200>.
-2. Informar o nome `Lucas`.
-3. Clicar em `Entrar`.
-
-Resultado esperado:
-
-- status muda para conectado;
-- canal exibido como `canal-geral`;
-- evento de conexão aparece na interface;
-- `Lucas` aparece como membro ativo.
-
-## Teste 2: broadcast entre dois usuários
-
-1. Manter a aba de `Lucas` aberta.
-2. Abrir uma segunda aba em <http://localhost:4200>.
-3. Entrar como `Marcelo`.
-4. Na aba de `Lucas`, enviar: `Equipe Alfa chegou ao ponto de encontro.`
-
-Resultado esperado:
-
-- a mensagem aparece para `Lucas`;
-- a mensagem aparece para `Marcelo`;
-- a lista de membros mostra os usuários conectados.
-
-## Teste 3: briefing para novo usuário
-
-1. Depois do Teste 2, abrir uma terceira aba.
-2. Entrar como `Júlia`.
-
-Resultado esperado:
-
-- `Júlia` recebe o briefing com as mensagens anteriores do canal;
-- os demais usuários recebem evento de entrada de `Júlia`.
-
-## Teste 4: saída de membro
-
-1. Fechar a aba de `Marcelo` ou clicar em `Sair do canal`.
-
-Resultado esperado:
-
-- os usuários restantes recebem evento de saída;
-- `Marcelo` é removido da lista de membros ativos.
-
-## Teste 5: payload inválido
-
-Este teste pode ser feito com uma ferramenta WebSocket externa, caso disponível.
-
-Conectar em:
-
-```text
-ws://localhost:8001/ws/channel/canal-geral?usuario=Teste
-```
-
-Enviar payload inválido:
-
-```json
-{
-  "type": "INVALID_MESSAGE",
-  "usuario": "Teste",
-  "timestamp_iso": "2026-06-04T21:30:00Z",
-  "corpo_texto": "Mensagem inválida."
-}
-```
-
-Resultado esperado:
-
-- o servidor responde com evento `ERROR`;
-- a mensagem inválida não é adicionada ao briefing;
-- a mensagem inválida não é retransmitida aos demais usuários.
-
-## Encerrar o projeto
-
-Para parar os serviços:
+Mantenha uma aba conectada ao `canal-geral` e execute:
 
 ```powershell
-docker compose down
+$udp = [System.Net.Sockets.UdpClient]::new()
+$payload = @{
+  type = "SEND_MESSAGE"
+  channel_id = "canal-geral"
+  usuario = "Central"
+  timestamp_iso = [DateTime]::UtcNow.ToString("o")
+  corpo_texto = "Mensagem enviada por UDP."
+} | ConvertTo-Json -Compress
+$bytes = [Text.Encoding]::UTF8.GetBytes($payload)
+$udp.Send($bytes, $bytes.Length, "localhost", 9000)
+$udp.Dispose()
+```
+
+Resultado esperado:
+
+- a mensagem aparece no frontend como `MESSAGE_RECEIVED`;
+- `Central` não aparece como membro ativo;
+- a mensagem passa a fazer parte do briefing.
+
+Datagramas sem `channel_id`, com JSON inválido ou com campos inválidos devem
+ser descartados e registrados nos logs da API.
+
+## Encerramento
+
+```powershell
+docker compose -f compose\docker-compose.yml down
 ```
