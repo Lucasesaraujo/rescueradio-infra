@@ -1,6 +1,6 @@
 # RescueRadio Infra
 
-Infraestrutura local e configuracoes de execucao do RescueRadio.
+Infraestrutura local e configurações de execução do RescueRadio.
 
 ## Responsabilidades
 
@@ -10,9 +10,9 @@ Infraestrutura local e configuracoes de execucao do RescueRadio.
 - exposição HTTP, WebSocket e UDP;
 - futuramente, PostgreSQL, Redis, Kafka e observabilidade.
 
-## Repositorios
+## Repositórios
 
-Para o fluxo local padrao, mantenha os tres repositorios como diretorios irmaos:
+Para o fluxo local padrão, mantenha os três repositórios como diretórios irmãos:
 
 ```text
 Sistemas Distribuidos/
@@ -21,12 +21,12 @@ Sistemas Distribuidos/
 `-- rescueradio-infra/
 ```
 
-## Execucao local
+## Execução local
 
 Construa as imagens da API e do frontend:
 
 ```powershell
-.\scripts\build-local.ps1
+./scripts/build-local.ps1
 ```
 
 Copie `.env.example` para `.env` se quiser alterar imagens, portas ou a URL
@@ -36,7 +36,8 @@ WebSocket usada pelo frontend. Em seguida:
 docker compose --env-file .env -f compose/docker-compose.yml up -d
 ```
 
-Sem um arquivo `.env`, o Compose usa os valores padrao definidos no proprio arquivo:
+Sem um arquivo `.env`, o Compose usa os valores padrão definidos no próprio
+arquivo:
 
 ```powershell
 docker compose -f compose/docker-compose.yml up -d
@@ -45,9 +46,9 @@ docker compose -f compose/docker-compose.yml up -d
 O projeto Compose usa o nome `rescueradio`, exibido como o grupo dos
 containers no Docker Desktop.
 
-Servicos:
+Serviços:
 
-| Servico | Endereco |
+| Serviço | Endereço |
 | --- | --- |
 | Web | <http://localhost:4200> |
 | API direta | <http://localhost:8000/health> |
@@ -63,7 +64,9 @@ docker compose -f compose/docker-compose.yml down
 
 ## Imagens publicadas
 
-Em CI/CD, altere `API_IMAGE` e `WEB_IMAGE` para tags imutaveis publicadas em um registry. O repositorio de infraestrutura nao copia nem compila codigo das aplicacoes.
+Em CI/CD, altere `API_IMAGE` e `WEB_IMAGE` para tags imutáveis publicadas em
+um registry. O repositório de infraestrutura não copia nem compila código das
+aplicações.
 
 ## Estrutura futura
 

@@ -5,8 +5,8 @@
 Na raiz de `rescueradio-infra`:
 
 ```powershell
-.\scripts\build-local.ps1
-docker compose -f compose\docker-compose.yml up -d
+./scripts/build-local.ps1
+docker compose -f compose/docker-compose.yml up -d
 ```
 
 Serviços esperados:
@@ -58,5 +58,5 @@ ser descartados e registrados nos logs da API.
 ## Encerramento
 
 ```powershell
-docker compose -f compose\docker-compose.yml down
+docker compose -f compose/docker-compose.yml down
 ```
