@@ -10,6 +10,41 @@ Infraestrutura local e configurações de execução do RescueRadio.
 - exposição HTTP, WebSocket e UDP;
 - futuramente, PostgreSQL, Redis, Kafka e observabilidade.
 
+## Decisão tecnológica
+
+A infraestrutura utiliza Docker Compose e Kong API Gateway. O Docker Compose
+foi escolhido para executar API, frontend e gateway de forma reproduzível,
+isolada e conectada por uma rede comum, mantendo configurações de portas e
+imagens em um único arquivo. O Kong foi escolhido como ponto de entrada para
+HTTP e WebSocket, permitindo centralizar o roteamento e preparar a arquitetura
+para futuras políticas de autenticação, controle de acesso e observabilidade.
+
+Essas escolhas se encaixam na arquitetura de alto nível porque separam as
+responsabilidades entre cliente, gateway e servidor, sem acoplar a interface
+ao endereço interno da API.
+
+## Arquitetura
+
+```text
+Angular Web App
+      |
+      | HTTP/WebSocket
+      v
+Kong API Gateway
+      |
+      v
+FastAPI WebSocket API <--- UDP 9000
+      |
+      v
+Estado em memória por canal
+```
+
+O Angular usa o Kong como entrada WebSocket. O Kong encaminha as conexões para
+o FastAPI, que valida as mensagens, atualiza o buffer circular e realiza o
+broadcast. Em paralelo, a API recebe datagramas UDP diretamente na porta
+`9000`; depois da validação, eles entram no mesmo fluxo de publicação. O estado
+em memória mantém o histórico recente e a presença das conexões WebSocket.
+
 ## Repositórios
 
 Para o fluxo local padrão, mantenha os três repositórios como diretórios irmãos:
@@ -19,6 +54,23 @@ Sistemas Distribuidos/
 |-- rescueradio-api/
 |-- rescueradio-web/
 `-- rescueradio-infra/
+```
+
+## Estrutura de pastas
+
+```text
+rescueradio-infra/
+|-- compose/
+|   `-- docker-compose.yml  # integração dos três serviços
+|-- kong/
+|   `-- kong.yml            # rotas HTTP e WebSocket
+|-- docs/
+|   |-- architecture.md     # visão arquitetural detalhada
+|   `-- test-scenarios.md   # roteiro de validação manual
+|-- scripts/
+|   `-- build-local.ps1     # build das imagens locais
+|-- .env.example            # portas, imagens e URL do gateway
+`-- README.md
 ```
 
 ## Execução local
