@@ -1,14 +1,14 @@
-name: CI
+name: Homolog
 
 on:
   push:
-    branches: [develop]
-  pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
-  validate-compose:
+  validate-homolog:
     runs-on: ubuntu-latest
+    environment: homolog
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f compose/docker-compose.yml config --quiet
+      - run: echo "Infraestrutura validada para o ambiente de homologacao."
