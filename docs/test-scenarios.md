@@ -1,6 +1,6 @@
-# Cenários de teste manual
+# Cenarios de teste manual
 
-## Preparação
+## Preparacao
 
 Na raiz de `rescueradio-infra`:
 
@@ -9,28 +9,61 @@ Na raiz de `rescueradio-infra`:
 docker compose -f compose/docker-compose.yml up -d
 ```
 
-Serviços esperados:
+Servicos esperados:
 
-| Serviço | Endereço |
+| Servico | Endereco |
 | --- | --- |
 | Frontend | <http://localhost:4200> |
 | API direta | <http://localhost:8000/health> |
 | API via Kong | <http://localhost:8001/health> |
 | UDP | `localhost:9000/udp` |
 
-## WebSocket
+## Validacao academica via terminal
 
-1. Abra duas abas do frontend.
-2. Entre como `Lucas` e `Marcelo`.
-3. Envie uma mensagem em uma das abas.
-4. Confirme que ambas recebem a mensagem e exibem os dois membros.
-5. Feche uma aba e confirme o evento de saída na outra.
-6. Abra uma terceira aba e confirme que o briefing contém as mensagens
-   anteriores.
+Abra tres terminais na raiz de `rescueradio-api` e conecte tres socorristas
+via Kong:
+
+```powershell
+python -m app.terminal_client --url ws://localhost:8001 --usuario Lucas
+```
+
+```powershell
+python -m app.terminal_client --url ws://localhost:8001 --usuario Marcelo
+```
+
+```powershell
+python -m app.terminal_client --url ws://localhost:8001 --usuario Julia
+```
+
+Em um dos terminais, digite:
+
+```text
+Equipe Alfa chegou ao local.
+```
+
+Resultado esperado:
+
+- os outros dois terminais recebem a mensagem imediatamente;
+- o terminal remetente nao recebe eco da propria mensagem;
+- todos recebem eventos de entrada e saida dos membros;
+- se a API ou o Kong cair e voltar, o cliente tenta reconectar sem precisar
+  reiniciar o processo.
+
+## Demonstracao do produto via navegador
+
+Abra <http://localhost:4200> em duas ou tres abas do navegador.
+
+1. Entre no canal como `Lucas`, `Marcelo` e `Julia`.
+2. Envie uma mensagem em uma das abas.
+3. Confirme que a aba remetente mostra a mensagem localmente.
+4. Confirme que as outras abas recebem a mensagem pelo servidor.
+5. Pare e suba novamente a API ou o Kong para validar o estado
+   `Reconectando` e a reconexao automatica da interface.
+6. Abra uma nova aba e confirme que o briefing contem as mensagens anteriores.
 
 ## UDP para WebSocket
 
-Mantenha uma aba conectada ao `canal-geral` e execute:
+Mantenha um cliente terminal conectado ao `canal-geral` e execute:
 
 ```powershell
 $udp = [System.Net.Sockets.UdpClient]::new()
@@ -48,11 +81,11 @@ $udp.Dispose()
 
 Resultado esperado:
 
-- a mensagem aparece no frontend como `MESSAGE_RECEIVED`;
-- `Central` não aparece como membro ativo;
+- a mensagem aparece no cliente como `MESSAGE_RECEIVED`;
+- `Central` nao aparece como membro ativo;
 - a mensagem passa a fazer parte do briefing.
 
-Datagramas sem `channel_id`, com JSON inválido ou com campos inválidos devem
+Datagramas sem `channel_id`, com JSON invalido ou com campos invalidos devem
 ser descartados e registrados nos logs da API.
 
 ## Encerramento
