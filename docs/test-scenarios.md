@@ -16,6 +16,8 @@ Servicos esperados:
 | Frontend | <http://localhost:4200> |
 | API direta | <http://localhost:8000/health> |
 | API via Kong | <http://localhost:8001/health> |
+| PostgreSQL | `localhost:5432` |
+| Redis | `localhost:6379` |
 | UDP | `localhost:9000/udp` |
 
 ## Validacao academica via terminal
@@ -48,6 +50,8 @@ Resultado esperado:
 - todos recebem eventos de entrada e saida dos membros;
 - se a API ou o Kong cair e voltar, o cliente tenta reconectar sem precisar
   reiniciar o processo.
+- reinicie somente a API e abra um novo cliente para confirmar que o briefing
+  continua vindo do PostgreSQL.
 
 ## Demonstracao do produto via navegador
 
@@ -87,6 +91,22 @@ Resultado esperado:
 
 Datagramas sem `channel_id`, com JSON invalido ou com campos invalidos devem
 ser descartados e registrados nos logs da API.
+
+## Persistencia PostgreSQL e presenca Redis
+
+Depois de enviar algumas mensagens, reinicie apenas a API:
+
+```powershell
+docker compose -f compose/docker-compose.yml restart api
+```
+
+Abra um novo cliente terminal ou uma nova aba da interface. Resultado esperado:
+
+- o evento `BRIEFING` contem as mensagens anteriores, persistidas no
+  PostgreSQL;
+- a lista de membros online volta a refletir apenas as conexoes WebSocket
+  ativas no momento, registradas no Redis;
+- mensagens UDP continuam entrando no mesmo historico persistente.
 
 ## Encerramento
 
