@@ -1,6 +1,6 @@
 # Arquitetura do RescueRadio
 
-## Visão geral
+## Visao Geral
 
 ```text
 Angular Web App
@@ -10,14 +10,16 @@ Kong Gateway
       |
       v
 FastAPI WebSocket API <--- UDP 9000
-      |
-      v
-Estado em memória
+      |              |
+      v              v
+PostgreSQL        Redis
+historico         presenca
 ```
 
-O frontend usa o Kong como entrada HTTP e WebSocket. A API também recebe
-datagramas UDP diretamente na porta `9000`, valida-os pelo mesmo serviço de
-mensagens e retransmite as mensagens aos clientes WebSocket do canal.
+O frontend usa o Kong como entrada HTTP e WebSocket. A API tambem recebe
+datagramas UDP diretamente na porta `9000`, valida-os pelo mesmo servico de
+mensagens, persiste mensagens validas no PostgreSQL e retransmite eventos aos
+clientes WebSocket conectados ao canal.
 
 ## Componentes
 
@@ -25,16 +27,16 @@ mensagens e retransmite as mensagens aos clientes WebSocket do canal.
 | --- | --- |
 | Angular Web App | Entrada no canal, chat, briefing, membros e eventos. |
 | Kong Gateway | Encaminhamento HTTP e WebSocket para a API. |
-| FastAPI | WebSocket, UDP, validação, broadcast, briefing e presença. |
-| Estado em memória | Buffer das últimas mensagens de cada canal. |
+| FastAPI | WebSocket, UDP, validacao, broadcast e orquestracao. |
+| PostgreSQL | Historico persistente de mensagens por canal. |
+| Redis | Presenca temporaria dos socorristas online. |
 
-Presença é exclusiva das conexões WebSocket. Remetentes UDP não aparecem na
-lista de membros, e a API não responde ACK nesta fase.
+Presenca e exclusiva das conexoes WebSocket. Remetentes UDP nao aparecem na
+lista de membros, e a API nao responde ACK nesta fase.
 
-## Evoluções aguardando especificação
+## Limites Desta Etapa
 
-- autenticação JWT e roles;
-- persistência em PostgreSQL;
-- presença ou cache em Redis;
-- eventos com Kafka;
-- observabilidade com Prometheus, Grafana e Loki.
+- O broadcast ainda e local a instancia da API.
+- Redis Pub/Sub ainda nao foi implementado.
+- O schema PostgreSQL e criado automaticamente no startup da API.
+- Autenticacao JWT, Kafka e observabilidade ficam para proximas entregas.

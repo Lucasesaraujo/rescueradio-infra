@@ -1,27 +1,24 @@
 # RescueRadio Infra
 
-Infraestrutura local e configurações de execução do RescueRadio.
+Infraestrutura local e configuracoes de execucao do RescueRadio.
 
 ## Responsabilidades
 
 - Docker Compose;
 - Kong API Gateway;
+- PostgreSQL para historico de mensagens;
+- Redis para presenca online;
 - redes e volumes;
-- exposição HTTP, WebSocket e UDP;
-- futuramente, PostgreSQL, Redis, Kafka e observabilidade.
+- exposicao HTTP, WebSocket e UDP;
+- futuramente, Kafka e observabilidade.
 
-## Decisão tecnológica
+## Decisao Tecnologica
 
-A infraestrutura utiliza Docker Compose e Kong API Gateway. O Docker Compose
-foi escolhido para executar API, frontend e gateway de forma reproduzível,
-isolada e conectada por uma rede comum, mantendo configurações de portas e
-imagens em um único arquivo. O Kong foi escolhido como ponto de entrada para
-HTTP e WebSocket, permitindo centralizar o roteamento e preparar a arquitetura
-para futuras políticas de autenticação, controle de acesso e observabilidade.
-
-Essas escolhas se encaixam na arquitetura de alto nível porque separam as
-responsabilidades entre cliente, gateway e servidor, sem acoplar a interface
-ao endereço interno da API.
+A infraestrutura utiliza Docker Compose, Kong API Gateway, PostgreSQL e Redis.
+O Docker Compose executa API, frontend, gateway, banco e cache de forma
+reproduzivel e conectada por uma rede comum. O Kong centraliza HTTP e WebSocket.
+O PostgreSQL persiste o historico dos canais, enquanto o Redis mantem presenca
+temporaria dos socorristas online.
 
 ## Arquitetura
 
@@ -34,20 +31,20 @@ Kong API Gateway
       |
       v
 FastAPI WebSocket API <--- UDP 9000
-      |
-      v
-Estado em memória por canal
+      |              |
+      v              v
+PostgreSQL        Redis
+historico         presenca
 ```
 
-O Angular usa o Kong como entrada WebSocket. O Kong encaminha as conexões para
-o FastAPI, que valida as mensagens, atualiza o buffer circular e realiza o
-broadcast. Em paralelo, a API recebe datagramas UDP diretamente na porta
-`9000`; depois da validação, eles entram no mesmo fluxo de publicação. O estado
-em memória mantém o histórico recente e a presença das conexões WebSocket.
+Mensagens validas vindas de WebSocket ou UDP sao persistidas no PostgreSQL e
+retransmitidas aos clientes WebSocket do canal. A presenca dos membros ativos
+fica no Redis. O broadcast ainda e local a instancia da API; Redis Pub/Sub nao
+faz parte desta etapa.
 
-## Repositórios
+## Repositorios
 
-Para o fluxo local padrão, mantenha os três repositórios como diretórios irmãos:
+Para o fluxo local padrao, mantenha os tres repositorios como diretorios irmaos:
 
 ```text
 Sistemas Distribuidos/
@@ -56,24 +53,24 @@ Sistemas Distribuidos/
 `-- rescueradio-infra/
 ```
 
-## Estrutura de pastas
+## Estrutura de Pastas
 
 ```text
 rescueradio-infra/
 |-- compose/
-|   `-- docker-compose.yml  # integração dos três serviços
+|   `-- docker-compose.yml  # integracao dos servicos
 |-- kong/
 |   `-- kong.yml            # rotas HTTP e WebSocket
 |-- docs/
-|   |-- architecture.md     # visão arquitetural detalhada
-|   `-- test-scenarios.md   # roteiro de validação manual
+|   |-- architecture.md
+|   `-- test-scenarios.md
 |-- scripts/
-|   `-- build-local.ps1     # build das imagens locais
-|-- .env.example            # portas, imagens e URL do gateway
+|   `-- build-local.ps1
+|-- .env.example
 `-- README.md
 ```
 
-## Execução local
+## Execucao Local
 
 Construa as imagens da API e do frontend:
 
@@ -81,57 +78,61 @@ Construa as imagens da API e do frontend:
 ./scripts/build-local.ps1
 ```
 
-Copie `.env.example` para `.env` se quiser alterar imagens, portas ou a URL
-WebSocket usada pelo frontend. Em seguida:
+Copie `.env.example` para `.env` se quiser alterar imagens, portas, credenciais
+ou URLs. Em seguida:
 
 ```powershell
 docker compose --env-file .env -f compose/docker-compose.yml up -d
 ```
 
-Sem um arquivo `.env`, o Compose usa os valores padrão definidos no próprio
+Sem um arquivo `.env`, o Compose usa os valores padrao definidos no proprio
 arquivo:
 
 ```powershell
 docker compose -f compose/docker-compose.yml up -d
 ```
 
-O projeto Compose usa o nome `rescueradio`, exibido como o grupo dos
-containers no Docker Desktop.
+Servicos:
 
-Serviços:
-
-| Serviço | Endereço |
+| Servico | Endereco |
 | --- | --- |
 | Web | <http://localhost:4200> |
 | API direta | <http://localhost:8000/health> |
 | API via Kong | <http://localhost:8001/health> |
 | Kong Admin | <http://localhost:8002> |
+| PostgreSQL | `localhost:5432` |
+| Redis | `localhost:6379` |
 | Entrada UDP | `localhost:9000/udp` |
 
-Para encerrar:
+Volumes:
+
+- `postgres-data`: dados persistentes do PostgreSQL;
+- `redis-data`: dados do Redis.
+
+Para encerrar sem apagar dados:
 
 ```powershell
 docker compose -f compose/docker-compose.yml down
 ```
 
-## Imagens publicadas
+Para encerrar apagando volumes locais:
 
-Em CI/CD, altere `API_IMAGE` e `WEB_IMAGE` para tags imutáveis publicadas em
-um registry. O repositório de infraestrutura não copia nem compila código das
-aplicações.
+```powershell
+docker compose -f compose/docker-compose.yml down -v
+```
 
-## Estrutura futura
+## Imagens Publicadas
 
-Os diretórios em `observability/` estão reservados para Prometheus, Grafana e
-Loki. PostgreSQL, Redis e Kafka serão adicionados quando entrarem na
-especificação da aplicação.
+Em CI/CD, altere `API_IMAGE` e `WEB_IMAGE` para tags imutaveis publicadas em um
+registry. O repositorio de infraestrutura nao copia nem compila codigo das
+aplicacoes.
 
-## Fluxo de desenvolvimento
+## Fluxo de Desenvolvimento
 
-- `main`: homologação das versões aprovadas em `develop`;
-- `develop`: desenvolvimento e integração das funcionalidades aprovadas;
+- `main`: homologacao das versoes aprovadas em `develop`;
+- `develop`: desenvolvimento e integracao das funcionalidades aprovadas;
 - `feature/*`: desenvolvimento isolado, sempre criado a partir de `develop`.
 
-As branches de funcionalidade devem voltar para `develop` por pull request
-após a aprovação do CI. A promoção para homologação ocorre por pull request
-de `develop` para `main`.
+As branches de funcionalidade devem voltar para `develop` por pull request apos
+a aprovacao do CI. A promocao para homologacao ocorre por pull request de
+`develop` para `main`.
