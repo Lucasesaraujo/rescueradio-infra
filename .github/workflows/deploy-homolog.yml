@@ -1,0 +1,14 @@
+name: Homolog
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  validate-homolog:
+    runs-on: ubuntu-latest
+    environment: homolog
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f compose/docker-compose.yml config --quiet
+      - run: echo "Infraestrutura validada para o ambiente de homologacao."
