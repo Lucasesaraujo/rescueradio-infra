@@ -9,71 +9,49 @@ Na raiz de `rescueradio-infra`:
 docker compose -f compose/docker-compose.yml up -d
 ```
 
-Servicos esperados:
+## GUI principal e onboarding
 
-| Servico | Endereco |
-| --- | --- |
-| Frontend | <http://localhost:4200> |
-| API direta | <http://localhost:8000/health> |
-| API via Kong | <http://localhost:8001/health> |
-| PostgreSQL | `localhost:5432` |
-| Redis | `localhost:6379` |
-| UDP | `localhost:9000/udp` |
+1. Abra <http://localhost:4200>.
+2. Cadastre `lucas` com senha `segredo123`; ele deve aparecer como admin.
+3. Complete o onboarding com base `Base Central`, funcao, contato e skills.
+4. Acesse Chat Geral e envie uma mensagem.
+5. Abra outra aba anonima e cadastre `marcelo`.
+6. Complete o onboarding de `marcelo` na mesma base.
+7. Confirme que o Chat Geral da base carrega briefing e retransmite mensagens.
 
-## Validacao academica via terminal
+## Operacoes
 
-Abra tres terminais na raiz de `rescueradio-api` e conecte tres socorristas
-via Kong:
+1. No usuario admin, va em Admin e promova `marcelo` para `comandante`, se quiser testar com comandante separado.
+2. Va em Operacoes.
+3. Preencha titulo, prioridade, endereco e descricao.
+4. Clique no mapa para definir a coordenada real.
+5. Selecione operadores disponiveis e clique em `Criar e abrir chat`.
+6. Envie mensagens no chat especifico da operacao.
+7. Preencha o resumo e finalize a operacao.
+8. Va em Historico e confirme auditoria com participantes, status e mensagens.
+
+## Reconexao
+
+Com duas GUIs abertas:
 
 ```powershell
-python -m app.terminal_client --url ws://localhost:8001 --usuario Lucas
-```
-
-```powershell
-python -m app.terminal_client --url ws://localhost:8001 --usuario Marcelo
-```
-
-```powershell
-python -m app.terminal_client --url ws://localhost:8001 --usuario Julia
-```
-
-Em um dos terminais, digite:
-
-```text
-Equipe Alfa chegou ao local.
+docker compose -f compose/docker-compose.yml restart api
 ```
 
 Resultado esperado:
 
-- os outros dois terminais recebem a mensagem imediatamente;
-- o terminal remetente nao recebe eco da propria mensagem;
-- todos recebem eventos de entrada e saida dos membros;
-- se a API ou o Kong cair e voltar, o cliente tenta reconectar sem precisar
-  reiniciar o processo.
-- reinicie somente a API e abra um novo cliente para confirmar que o briefing
-  continua vindo do PostgreSQL.
-
-## Demonstracao do produto via navegador
-
-Abra <http://localhost:4200> em duas ou tres abas do navegador.
-
-1. Entre no canal como `Lucas`, `Marcelo` e `Julia`.
-2. Envie uma mensagem em uma das abas.
-3. Confirme que a aba remetente mostra a mensagem localmente.
-4. Confirme que as outras abas recebem a mensagem pelo servidor.
-5. Pare e suba novamente a API ou o Kong para validar o estado
-   `Reconectando` e a reconexao automatica da interface.
-6. Abra uma nova aba e confirme que o briefing contem as mensagens anteriores.
+- as telas mudam para `Reconectando`;
+- o historico permanece visivel;
+- o input fica bloqueado enquanto o WebSocket nao volta;
+- a reconexao acontece sem refresh manual.
 
 ## UDP para WebSocket
-
-Mantenha um cliente terminal conectado ao `canal-geral` e execute:
 
 ```powershell
 $udp = [System.Net.Sockets.UdpClient]::new()
 $payload = @{
   type = "SEND_MESSAGE"
-  channel_id = "canal-geral"
+  channel_id = "base:base-central:geral"
   usuario = "Central"
   timestamp_iso = [DateTime]::UtcNow.ToString("o")
   corpo_texto = "Mensagem enviada por UDP."
@@ -85,28 +63,17 @@ $udp.Dispose()
 
 Resultado esperado:
 
-- a mensagem aparece no cliente como `MESSAGE_RECEIVED`;
+- a mensagem aparece na GUI como `Central`;
 - `Central` nao aparece como membro ativo;
-- a mensagem passa a fazer parte do briefing.
+- a mensagem entra no briefing de novas conexoes.
 
-Datagramas sem `channel_id`, com JSON invalido ou com campos invalidos devem
-ser descartados e registrados nos logs da API.
+## Observabilidade
 
-## Persistencia PostgreSQL e presenca Redis
-
-Depois de enviar algumas mensagens, reinicie apenas a API:
-
-```powershell
-docker compose -f compose/docker-compose.yml restart api
-```
-
-Abra um novo cliente terminal ou uma nova aba da interface. Resultado esperado:
-
-- o evento `BRIEFING` contem as mensagens anteriores, persistidas no
-  PostgreSQL;
-- a lista de membros online volta a refletir apenas as conexoes WebSocket
-  ativas no momento, registradas no Redis;
-- mensagens UDP continuam entrando no mesmo historico persistente.
+1. Acesse <http://localhost:9090> e consulte `rescueradio_active_connections`.
+2. Acesse <http://localhost:3000> com `admin` / `admin`.
+3. Abra o dashboard `RescueRadio Operacao`.
+4. Em Explore, use Loki e filtre por `service="api"` ou outro container
+   `rescueradio-*`.
 
 ## Encerramento
 

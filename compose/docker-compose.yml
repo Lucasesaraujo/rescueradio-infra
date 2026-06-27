@@ -6,18 +6,24 @@ services:
     container_name: rescueradio-api
     restart: unless-stopped
     environment:
-      UDP_HOST: 0.0.0.0
-      UDP_PORT: 9000
+      ENABLE_UDP: ${ENABLE_UDP:-false}
+      UDP_HOST: ${UDP_HOST:-0.0.0.0}
+      UDP_PORT: ${UDP_PORT:-9000}
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://rescueradio:rescueradio@postgres:5432/rescueradio}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       DISCONNECT_GRACE_SECONDS: ${DISCONNECT_GRACE_SECONDS:-2}
+      JWT_SECRET: ${JWT_SECRET:-rescueradio-local-secret}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-*}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_AUDIT_TOPIC: ${KAFKA_AUDIT_TOPIC:-rescueradio.audit}
     ports:
       - "${API_HTTP_PORT:-8000}:8000"
-      - "${API_UDP_PORT:-9000}:9000/udp"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - rescueradio-network
@@ -27,7 +33,8 @@ services:
     container_name: rescueradio-web
     restart: unless-stopped
     environment:
-      GATEWAY_WS_URL: ${GATEWAY_WS_URL:-ws://localhost:8001}
+      GATEWAY_WS_URL: ${GATEWAY_WS_URL:-ws://localhost:8000}
+      GATEWAY_HTTP_URL: ${GATEWAY_HTTP_URL:-http://localhost:8001/api}
     ports:
       - "${WEB_PORT:-4200}:80"
     depends_on:
@@ -94,6 +101,99 @@ services:
     networks:
       - rescueradio-network
 
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: rescueradio-kafka
+    restart: unless-stopped
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - rescueradio-network
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: rescueradio-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - api
+    networks:
+      - rescueradio-network
+
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: rescueradio-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yml
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ../observability/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    networks:
+      - rescueradio-network
+
+  promtail:
+    image: grafana/promtail:3.2.1
+    container_name: rescueradio-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ../observability/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - rescueradio-network
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: rescueradio-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_DEFAULT_THEME: dark
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - rescueradio-network
+
 networks:
   rescueradio-network:
     driver: bridge
@@ -101,3 +201,7 @@ networks:
 volumes:
   postgres-data:
   redis-data:
+  kafka-data:
+  prometheus-data:
+  loki-data:
+  grafana-data:
