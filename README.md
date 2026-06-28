@@ -54,32 +54,32 @@ Na raiz de `rescueradio-infra`, construa as imagens locais:
 Suba o ambiente:
 
 ```powershell
-docker compose -f compose/docker-compose.yml up -d
+docker compose up -d
 ```
 
 Depois de alterar API ou Web, rode novamente `./scripts/build-local.ps1` antes do `up -d`. Se os containers ja existirem e voce quiser garantir que as imagens novas entrem em uso, execute:
 
 ```powershell
-docker compose -f compose/docker-compose.yml up -d --force-recreate
+docker compose up -d --force-recreate
 ```
 
 Ou, usando `.env`:
 
 ```powershell
 Copy-Item .env.example .env
-docker compose --env-file .env -f compose/docker-compose.yml up -d
+docker compose --env-file .env up -d
 ```
 
 Para encerrar sem apagar dados:
 
 ```powershell
-docker compose -f compose/docker-compose.yml down
+docker compose down
 ```
 
 Para encerrar apagando volumes:
 
 ```powershell
-docker compose -f compose/docker-compose.yml down -v
+docker compose down -v
 ```
 
 ## Demonstracao operacional
@@ -95,7 +95,7 @@ docker compose -f compose/docker-compose.yml down -v
 9. Reinicie a API ou o Kong:
 
 ```powershell
-docker compose -f compose/docker-compose.yml restart api
+docker compose restart api
 ```
 
 10. Confirme que a GUI fica em `Reconectando` e volta sem congelar.
