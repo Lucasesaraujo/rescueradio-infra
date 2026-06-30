@@ -13,6 +13,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       DISCONNECT_GRACE_SECONDS: ${DISCONNECT_GRACE_SECONDS:-2}
       JWT_SECRET: ${JWT_SECRET:-rescueradio-local-secret}
+      BOOTSTRAP_ADMIN_KEY: ${BOOTSTRAP_ADMIN_KEY:-rescueradio-bootstrap}
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-*}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_AUDIT_TOPIC: ${KAFKA_AUDIT_TOPIC:-rescueradio.audit}
