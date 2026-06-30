@@ -69,8 +69,8 @@ Resultado esperado:
 
 ## Observabilidade
 
-1. Acesse <http://localhost:9090> e consulte `rescueradio_active_connections`.
-2. Acesse <http://localhost:3000> com `admin` / `admin`.
+1. Acesse localmente <http://localhost:9090> ou em producao <https://prometheus.devflowapp.space> e consulte `rescueradio_active_connections`.
+2. Acesse localmente <http://localhost:3000> ou em producao <https://grafana.devflowapp.space>.
 3. Abra o dashboard `RescueRadio Operacao`.
 4. Em Explore, use Loki e filtre por `service="api"` ou outro container
    `rescueradio-*`.

@@ -61,9 +61,9 @@ padrao. A Entrega 3 usa GUI + HTTP + WebSocket como fluxo principal.
 | PostgreSQL | `5432` | banco `rescueradio` |
 | Redis | `6379` | presenca e Pub/Sub |
 | Kafka | `9092` | topico `rescueradio.audit` |
-| Prometheus | `9090` | <http://localhost:9090> |
-| Grafana | `3000` | <http://localhost:3000> |
-| Loki | `3100` | API interna/consulta por Grafana |
+| Prometheus | `9090` | local: <http://localhost:9090> / producao: <https://prometheus.devflowapp.space> |
+| Grafana | `3000` | local: <http://localhost:3000> / producao: <https://grafana.devflowapp.space> |
+| Loki | `3100` | local: API interna/consulta por Grafana / producao: <https://loki.devflowapp.space> |
 
 Login padrao do Grafana:
 
@@ -346,10 +346,12 @@ caminho principal.
   direta em <http://localhost:8000/health>.
 - WebSocket falha no navegador: confira se `GATEWAY_WS_URL` aponta para
   `ws://localhost:8000`.
-- Prometheus sem dados: abra <http://localhost:9090/targets> e veja se o target
+- Prometheus sem dados: abra <http://localhost:9090/targets> localmente ou
+  <https://prometheus.devflowapp.space/targets> em producao e veja se o target
   da API esta `UP`.
-- Loki em `localhost:3100` pode mostrar endpoints tecnicos. Para consulta
-  amigavel, use o Grafana Explore com datasource Loki.
+- Loki em `localhost:3100` ou <https://loki.devflowapp.space> pode mostrar
+  endpoints tecnicos. Para consulta amigavel, use o Grafana Explore com
+  datasource Loki.
 
 ## CI
 
